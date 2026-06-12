@@ -44,6 +44,7 @@ AI 生成 HTML+Canvas+JS 代码
 - 自包含：所有样式和脚本都在 HTML 文件内，不依赖外部资源
 - 高分屏适配：使用 `window.devicePixelRatio`
 - **必须包含"保存图片"按钮**：点击后将 Canvas 导出为 PNG 并自动下载
+- **按钮位置规则**：保存按钮必须放在画布以外，使用固定定位（position: fixed）悬浮在页面角落，不能遮挡或影响画布内容
 
 **画风指导：**
 - 优先使用扁平化设计（flat design），简洁干净
@@ -59,15 +60,15 @@ AI 生成 HTML+Canvas+JS 代码
 <head>
 <meta charset="utf-8">
 <style>
-  body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: -apple-system, sans-serif; }
+  body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: -apple-system, sans-serif; }
   canvas { border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-  .btn { margin-top: 16px; padding: 10px 24px; background: #378ADD; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
-  .btn:hover { background: #2a6db8; }
+  .save-btn { position: fixed; bottom: 24px; right: 24px; padding: 10px 24px; background: #378ADD; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.15); z-index: 100; }
+  .save-btn:hover { background: #2a6db8; }
 </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<button class="btn" onclick="saveImage()">保存图片</button>
+<button class="save-btn" onclick="saveImage()">保存图片</button>
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
