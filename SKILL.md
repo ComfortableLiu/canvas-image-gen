@@ -1,9 +1,9 @@
 ---
 name: canvas-image-gen
-description: 用纯文本模型的代码能力，通过 HTML Canvas 代码级作画生成图像。用户描述想要的图，AI 生成 HTML+Canvas+JS 代码，浏览器打开即可查看，点击按钮可保存为 PNG。就像文生图一样，但用代码画。
-version: 2.0.0
+description: 用纯文本模型的代码能力，通过 HTML Canvas 代码级作画生成图像。用户描述想要的图，AI 生成 HTML+Canvas+JS 代码，浏览器打开即可查看，点击按钮可保存为 PNG 或 GIF（动画）。就像文生图一样，但用代码画。
+version: 3.0.0
 author: 说人话的实验室
-tags: [canvas, 图像生成, 代码作画, html, 文生图, 可视化]
+tags: [canvas, 图像生成, 代码作画, html, 文生图, 可视化, gif, 动画]
 ---
 
 # Canvas Image Gen
@@ -11,6 +11,10 @@ tags: [canvas, 图像生成, 代码作画, html, 文生图, 可视化]
 用纯文本模型的代码能力，通过 HTML Canvas 代码级作画生成图像。
 
 就像文生图模型一样——用户描述想要的图，AI 帮你画出来。只不过"画笔"是代码，"画布"是 HTML Canvas。
+
+支持两种输出：
+- **静态图**：导出 PNG（默认）
+- **动画**：导出 GIF（当内容有动画时自动支持）
 
 ## 核心原理
 
@@ -22,6 +26,7 @@ AI 生成 HTML+Canvas+JS 代码
 保存为 HTML 文件，浏览器打开
          ↓
 点击"保存图片"按钮 → 导出 PNG
+点击"导出 GIF"按钮 → 录制动画 → 导出 GIF（仅动画内容）
 ```
 
 ## 使用方法
@@ -44,7 +49,14 @@ AI 生成 HTML+Canvas+JS 代码
 - 自包含：所有样式和脚本都在 HTML 文件内，不依赖外部资源
 - 高分屏适配：使用 `window.devicePixelRatio`
 - **必须包含"保存图片"按钮**：点击后将 Canvas 导出为 PNG 并自动下载
-- **按钮位置规则**：保存按钮必须放在画布以外，使用固定定位（position: fixed）悬浮在页面角落，不能遮挡或影响画布内容
+- **动画内容必须包含"导出 GIF"按钮**：录制动画并导出为 GIF
+- **按钮位置规则**：按钮必须放在画布以外，使用固定定位（position: fixed）悬浮在页面角落，不能遮挡或影响画布内容
+
+**动画导出要求（仅当内容有动画时）：**
+- 必须定义 `window.resetAnimation` 函数：将动画重置到第一帧
+- 必须定义 `window.getAnimationDuration` 函数：返回动画周期（秒）
+- 导出流程：重置动画 → 录制一个完整周期 → 解码视频帧 → NeuQuant 颜色量化 → LZW 编码 GIF
+- 使用 MediaRecorder API 录制 canvas stream，不依赖外部库
 
 **画风指导：**
 - 优先使用扁平化设计（flat design），简洁干净
@@ -53,7 +65,7 @@ AI 生成 HTML+Canvas+JS 代码
 - 适当使用渐变增加层次感
 - 文字清晰可读（如果有文字的话）
 
-**代码结构：**
+**代码结构（静态图）：**
 ```html
 <!DOCTYPE html>
 <html>
@@ -92,6 +104,116 @@ function saveImage() {
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
+</script>
+</body>
+</html>
+```
+
+**代码结构（带动画）：**
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; font-family: -apple-system, sans-serif; }
+  canvas { border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 800, H = 600;
+
+// 动画状态
+let t0 = performance.now();
+window.resetAnimation = function() { t0 = performance.now(); };
+window.getAnimationDuration = function() { return 6; }; // 动画周期（秒）
+
+function frame(now) {
+  const t = (now - t0) / 1000; // 相对时间（秒）
+  ctx.clearRect(0, 0, W, H);
+
+  // ============ 绘制代码开始 ============
+  // ... AI 根据用户描述生成动画绘制代码，使用 t 控制动画 ...
+  // ============ 绘制代码结束 ============
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+
+<!-- 导出按钮 -->
+<div id="saveBtn" onclick="saveImage()" style="position:fixed;bottom:16px;right:16px;z-index:9999;background:#378ADD;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;">📸 保存 PNG</div>
+<div id="gifExportBtn" onclick="exportGif()" style="position:fixed;bottom:16px;right:130px;z-index:9999;background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;">🎬 导出 GIF</div>
+<div id="gifProgress" style="position:fixed;bottom:56px;right:130px;z-index:9999;background:rgba(0,0,0,0.8);color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;display:none;">准备中...</div>
+<script>
+function saveImage() {
+  const link = document.createElement('a');
+  link.download = 'canvas-image.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function exportGif() {
+  const btn = document.getElementById('gifExportBtn');
+  const prog = document.getElementById('gifProgress');
+  btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none';
+  prog.style.display = 'block';
+  if (typeof window.resetAnimation === 'function') window.resetAnimation();
+  const animDur = typeof window.getAnimationDuration === 'function' ? window.getAnimationDuration() : 3;
+  prog.textContent = '录制中（' + animDur + '秒）...';
+  try {
+    const stream = canvas.captureStream(10);
+    const recorder = new MediaRecorder(stream, {mimeType: 'video/webm;codecs=vp8'});
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    const webmBlob = await new Promise((resolve, reject) => {
+      recorder.onstop = () => resolve(new Blob(chunks, {type: 'video/webm'}));
+      recorder.onerror = reject;
+      recorder.start();
+      setTimeout(() => recorder.stop(), animDur * 1000);
+    });
+    prog.textContent = '解码视频帧...';
+    const video = document.createElement('video');
+    video.muted = true;
+    video.src = URL.createObjectURL(webmBlob);
+    await new Promise(r => { video.onloadedmetadata = r; });
+    await new Promise(r => { video.oncanplay = r; });
+    const fps = 10, totalFrames = Math.min(Math.ceil(video.duration * fps), 50);
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = W; tmpCanvas.height = H;
+    const tmpCtx = tmpCanvas.getContext('2d');
+    const frames = [];
+    for (let i = 0; i < totalFrames; i++) {
+      video.currentTime = i / fps;
+      await new Promise(r => { video.onseeked = r; });
+      tmpCtx.drawImage(video, 0, 0, W, H);
+      frames.push(new Uint8Array(tmpCtx.getImageData(0, 0, W, H).data));
+      prog.textContent = '解码帧 ' + (i+1) + '/' + totalFrames + '...';
+    }
+    URL.revokeObjectURL(video.src);
+    prog.textContent = '编码GIF...';
+    // NeuQuant + LZW 编码（完整代码见 GitHub）
+    // https://github.com/ComfortableLiu/canvas-image-gen
+    const gif = encodeGIF(W, H, frames, 100);
+    const blob = new Blob([gif], {type: 'image/gif'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = 'animation.gif';
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+    prog.textContent = '✅ 导出完成！';
+  } catch(e) { prog.textContent = '❌ ' + e.message; }
+  setTimeout(() => { prog.style.display = 'none'; }, 2000);
+  btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+}
+
+// encodeGIF + NeuQuant + lzwEncode 完整代码：
+// https://github.com/ComfortableLiu/canvas-image-gen
 </script>
 </body>
 </html>
@@ -158,6 +280,7 @@ drawArrow(400, 260, 400, 350);
 - ✅ 信息图、对比图
 - ✅ 卡通形象、扁平插画
 - ✅ 公众号配图、社交媒体图片
+- ✅ **动画可视化**（算法演示、数据流动、交互过程）
 - ✅ 任何你能用文字描述的图
 
 ## 不适用场景
@@ -171,8 +294,25 @@ drawArrow(400, 260, 400, 350);
 - 文件格式：HTML（自包含，无外部依赖）
 - 文件名：`canvas-{简短描述}.html`
 - 保存位置：`{workspace}/generated-images/{主题}/`
-- 导出方式：页面内置"保存图片"按钮，点击即导出 PNG
+- 导出方式：
+  - 静态图：页面内置"保存图片"按钮，点击即导出 PNG
+  - 动画：页面内置"导出 GIF"按钮，录制一个完整动画周期后导出 GIF
 - 预览方式：自动打开浏览器
+
+## 动画导出技术细节
+
+GIF 导出流程：
+1. **录制**：使用 `canvas.captureStream(10)` + `MediaRecorder` 录制 WebM
+2. **解码**：用 `<video>` 元素回放 WebM，逐帧抓取到临时 canvas
+3. **量化**：使用 NeuQuant 神经网络算法将颜色量化到 256 色
+4. **编码**：使用 LZW 压缩算法编码 GIF
+
+关键函数：
+- `window.resetAnimation()`：重置动画到第一帧（录制前调用）
+- `window.getAnimationDuration()`：返回动画周期秒数（录制时长）
+- `encodeGIF(w, h, frames, delay)`：GIF 编码器
+- `NeuQuant(pixels, samplefac)`：NeuQuant 颜色量化
+- `lzwEncode(out, pixels, minCodeSize)`：LZW 压缩
 
 ## 开源信息
 
