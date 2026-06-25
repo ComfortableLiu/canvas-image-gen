@@ -1,7 +1,7 @@
 ---
 name: canvas-image-gen
 description: 用纯文本模型的代码能力，通过 HTML Canvas 代码级作画生成图像。用户描述想要的图，AI 生成 HTML+Canvas+JS 代码，浏览器打开即可查看，点击按钮可保存为 PNG、WebM 或 GIF（动画）。就像文生图一样，但用代码画。
-version: 3.1.0
+version: 3.1.1
 author: 说人话的实验室
 tags: [canvas, 图像生成, 代码作画, html, 文生图, 可视化, gif, webm, 动画, 高清]
 ---
@@ -51,7 +51,7 @@ AI 生成 HTML+Canvas+JS 代码
 - **必须 HiDPI 适配**：canvas 物理尺寸 = CSS 尺寸 × devicePixelRatio，ctx.scale(dpr, dpr)
 - **必须包含"保存图片"按钮**：点击后将 Canvas 导出为 PNG 并自动下载
 - **动画内容必须包含"导出 WebM"和"导出 GIF"按钮**
-- **按钮位置规则**：按钮必须放在画布以外，使用固定定位（position: fixed）悬浮在页面角落，不能遮挡或影响画布内容
+- **按钮位置规则**：按钮必须放在画布以外，使用固定定位（position: fixed）悬浮在页面角落，不能遮挡或影响画布内容。**严禁把按钮放在 canvas 的 wrapper 内或使用 position: absolute 相对于画布定位。** 推荐：按钮放在 `<body>` 下，用 `position: fixed; top: 16px; right: 16px;` 悬浮在页面右上角。
 
 **HiDPI 适配（必须）：**
 ```html
@@ -90,13 +90,11 @@ AI 生成 HTML+Canvas+JS 代码
 <style>
   body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: -apple-system, sans-serif; }
   canvas { border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-  .save-btn { position: fixed; bottom: 24px; right: 24px; padding: 10px 24px; background: #378ADD; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.15); z-index: 100; }
-  .save-btn:hover { background: #2a6db8; }
 </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<button class="save-btn" onclick="saveImage()">保存图片</button>
+<div onclick="saveImage()" style="position:fixed;top:16px;right:16px;z-index:9999;background:#378ADD;color:#fff;border:none;border-radius:6px;padding:10px 20px;font-size:14px;cursor:pointer;">保存图片</div>
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
